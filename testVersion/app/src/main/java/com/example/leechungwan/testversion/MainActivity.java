@@ -86,7 +86,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     }
-    private List<MapCoordinate> makeCoordinate(){
+
+    private List<MapCoordinate> makeCoordinate() {
         coordinates = new ArrayList<>();
         coordinates.add(new MapCoordinate(0, 1));
         coordinates.add(new MapCoordinate(1, 2));
@@ -112,10 +113,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return coordinates;
     }
 
-    private void drawLine(GoogleMap googleMap){
-        for(int i=0; i<coordinates.size(); i++){
+    private void drawLine(GoogleMap googleMap) {
+        for (int i = 0; i < coordinates.size(); i++) {
             googleMap.addPolyline(new PolylineOptions().add(latLngList[coordinates.get(i).getX_dot()], latLngList[coordinates.get(i).getY_dot()]).width(5).color(Color.GREEN));
         }
+    }
+
+    private int determineColor(int concentration) {
+        if (concentration >= 0 && concentration < 30) {
+            return Color.BLUE;
+        } else if (concentration >= 30 && concentration < 80) {
+            return Color.GREEN;
+        } else if (concentration > 80 && concentration < 150) {
+            return Color.YELLOW;
+        } else if (concentration >= 150) {
+            return Color.RED;
+        }
+
+        return -1;
     }
 
     private void updateNode() {
