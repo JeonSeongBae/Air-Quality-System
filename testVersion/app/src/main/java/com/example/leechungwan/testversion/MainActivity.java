@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<EndDevice> list_EndDevice;
     private List<MapCoordinate> coordinates;
     private LatLng[] latLngList;
+    private LatLng[] nodeCoordinates;
     private FirebaseDatabase firebaseDatabase;
     private DatabaseReference firebaseDatabaseRef;
     private GoogleMap mGoogleMap = null;
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         list_EndDevice = new ArrayList<EndDevice>();
         coordinates = makeCoordinate();
+        setNodeCoordinates(coordinates.size());
 
         android.app.FragmentManager fragmentManager = getFragmentManager();
         MapFragment mapFragment = (MapFragment) fragmentManager
@@ -66,6 +68,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             latLngList[i] = new LatLng(list_EndDevice.get(i).getLatitude(), list_EndDevice.get(i).getLongitude());
         }
 
+        for (int i = 0; i<nodeCoordinates.length;i++){
+            MarkerOptions  node = new MarkerOptions();
+            node.position(nodeCoordinates[i])
+                    .title("0"+i);
+            googleMap.addMarker(node);
+        }
+
         for (int idx = 0; idx < list_EndDevice.size(); idx++) {
             MarkerOptions markerOptions = new MarkerOptions();
             markerOptions
@@ -74,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .alpha(0.01f);
             googleMap.addMarker(markerOptions);
         }
+
         LatLng startLocation = new LatLng(36.369906, 127.345907);
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
         googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
@@ -85,6 +95,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //googleMap.addPolyline(new PolylineOptions().add(latLngList[1], latLngList[6]).width(5).color(Color.GREEN));
 
 
+    }
+
+    private void setNodeCoordinates(int size) {
+        nodeCoordinates = new LatLng[size];
+        int i = 0;
+        nodeCoordinates[i++] = new LatLng(36.367194, 127.342399);
+        nodeCoordinates[i++] = new LatLng(36.366382, 127.343674);
+        nodeCoordinates[i++] = new LatLng(36.366054, 127.344738);
+        nodeCoordinates[i++] = new LatLng(36.368823, 127.342077);
+        nodeCoordinates[i++] = new LatLng(36.368684, 127.343348);
+        nodeCoordinates[i++] = new LatLng(36.368516, 127.344979);
+        nodeCoordinates[i++] = new LatLng(36.370104, 127.341966);
+        nodeCoordinates[i++] = new LatLng(36.370427, 127.343275);
+        nodeCoordinates[i++] = new LatLng(36.370367, 127.344122);
+        nodeCoordinates[i++] = new LatLng(36.369767, 127.345163);
+        nodeCoordinates[i++] = new LatLng(36.369311, 127.341306);
+        nodeCoordinates[i++] = new LatLng(36.368257, 127.341451);
+        nodeCoordinates[i++] = new LatLng(36.369433, 127.344164);
+        nodeCoordinates[i++] = new LatLng(36.368295, 127.343995);
+        nodeCoordinates[i++] = new LatLng(36.367582, 127.343656);
+        nodeCoordinates[i++] = new LatLng(36.366907, 127.343345);
+        nodeCoordinates[i++] = new LatLng(36.369547, 127.342676);
+        nodeCoordinates[i++] = new LatLng(36.368834, 127.345832);
+        nodeCoordinates[i++] = new LatLng(36.367142, 127.345559);
     }
 
     private List<MapCoordinate> makeCoordinate() {
