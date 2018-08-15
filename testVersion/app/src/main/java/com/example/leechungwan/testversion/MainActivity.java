@@ -1,11 +1,8 @@
 package com.example.leechungwan.testversion;
 
 import android.graphics.Color;
-import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -24,10 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
-    private List<RegistedNode> registedNodeList;
-    private List<MapCoordinate> coordinates;
-    private LatLng[] latLngList;
-    private LatLng[] nodeCoordinates;
+    private List<RegistedNode> registedNodeList;    // Line을 그릴 PIN 객체를 저장함.
+    private List<EndDevice> endDeviceList;          // 미세먼지 농도가 저장된 노드를 저장함.
+    private List<MapCoordinate> orderedPair;        // Line을 그릴 PIN의 순서쌍을 저장.
+    private LatLng[] registedCoordinates;
+    private LatLng[] endDeviceCoordinates;
     private FirebaseDatabase firebaseDatabase;
     private DatabaseReference firebaseDatabaseRef;
     private GoogleMap mGoogleMap = null;
@@ -37,9 +35,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        registedNodeList = new ArrayList<RegistedNode>();
-        coordinates = makeCoordinate();
-        setNodeCoordinates(coordinates.size());
+        registedNodeList = new ArrayList<>();
+        endDeviceList = new ArrayList<>();
+        orderedPair = makeOrderedPair();
+
 
         android.app.FragmentManager fragmentManager = getFragmentManager();
         MapFragment mapFragment = (MapFragment) fragmentManager
@@ -62,22 +61,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void initNode(GoogleMap googleMap) {
-        latLngList = new LatLng[registedNodeList.size()];
-        for (int i = 0; i < registedNodeList.size(); i++) {
-            latLngList[i] = new LatLng(registedNodeList.get(i).getLatitude(), registedNodeList.get(i).getLongitude());
-        }
-
-        for (int i = 0; i<nodeCoordinates.length;i++){
-            MarkerOptions  node = new MarkerOptions();
-            node.position(nodeCoordinates[i])
-                    .title("0"+i);
-            googleMap.addMarker(node);
-        }
+//        for (int i = 0; i < nodeCoordinates.length; i++) {
+//            MarkerOptions node = new MarkerOptions();
+//            node.position(nodeCoordinates[i])
+//                    .title("0" + i);
+//            googleMap.addMarker(node);
+//        }
 
         for (int idx = 0; idx < registedNodeList.size(); idx++) {
             MarkerOptions markerOptions = new MarkerOptions();
             markerOptions
-                    .position(latLngList[idx])
+                    .position(registedCoordinates[idx])
                     //.title(list_EndDevice.get(idx).getID())
                     .alpha(0.01f);
             googleMap.addMarker(markerOptions);
@@ -87,68 +81,50 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
         googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
         drawLine(mGoogleMap);
-        // map에 선 그리는 함수.
-//        for (int i = 0; i < latLngList.length - 1; i++) {
-//            googleMap.addPolyline(new PolylineOptions().add(latLngList[i], latLngList[i + 1]).width(5).color(Color.GREEN));
-//        }
-        //googleMap.addPolyline(new PolylineOptions().add(latLngList[1], latLngList[6]).width(5).color(Color.GREEN));
-
-
     }
 
-    private void setNodeCoordinates(int size) {
-        nodeCoordinates = new LatLng[size];
-        int i = 0;
-        nodeCoordinates[i++] = new LatLng(36.367194, 127.342399);
-        nodeCoordinates[i++] = new LatLng(36.366382, 127.343674);
-        nodeCoordinates[i++] = new LatLng(36.366054, 127.344738);
-        nodeCoordinates[i++] = new LatLng(36.368823, 127.342077);
-        nodeCoordinates[i++] = new LatLng(36.368684, 127.343348);
-        nodeCoordinates[i++] = new LatLng(36.368516, 127.344979);
-        nodeCoordinates[i++] = new LatLng(36.370104, 127.341966);
-        nodeCoordinates[i++] = new LatLng(36.370427, 127.343275);
-        nodeCoordinates[i++] = new LatLng(36.370367, 127.344122);
-        nodeCoordinates[i++] = new LatLng(36.369767, 127.345163);
-        nodeCoordinates[i++] = new LatLng(36.369311, 127.341306);
-        nodeCoordinates[i++] = new LatLng(36.368257, 127.341451);
-        nodeCoordinates[i++] = new LatLng(36.369433, 127.344164);
-        nodeCoordinates[i++] = new LatLng(36.368295, 127.343995);
-        nodeCoordinates[i++] = new LatLng(36.367582, 127.343656);
-        nodeCoordinates[i++] = new LatLng(36.366907, 127.343345);
-        nodeCoordinates[i++] = new LatLng(36.369547, 127.342676);
-        nodeCoordinates[i++] = new LatLng(36.368834, 127.345832);
-        nodeCoordinates[i++] = new LatLng(36.367142, 127.345559);
+    private void setRegistCoordinates(int size) {
+        registedCoordinates = new LatLng[size];
+        for (int i = 0; i < size; i++) {
+            registedCoordinates[i] = new LatLng(registedNodeList.get(i).getLatitude(), registedNodeList.get(i).getLongitude());
+        }
     }
 
-    private List<MapCoordinate> makeCoordinate() {
-        coordinates = new ArrayList<>();
-        coordinates.add(new MapCoordinate(0, 1));
-        coordinates.add(new MapCoordinate(1, 2));
-        coordinates.add(new MapCoordinate(2, 3));
-        coordinates.add(new MapCoordinate(6, 7));
-        coordinates.add(new MapCoordinate(7, 8));
-        coordinates.add(new MapCoordinate(8, 9));
-        coordinates.add(new MapCoordinate(10, 11));
-        coordinates.add(new MapCoordinate(11, 12));
-        coordinates.add(new MapCoordinate(12, 13));
-        coordinates.add(new MapCoordinate(13, 14));
+    private void setEndDeviceCoordinates(int size) {
+        endDeviceCoordinates = new LatLng[size];
+        for (int i = 0; i < size; i++) {
+            endDeviceCoordinates[i] = new LatLng(endDeviceList.get(i).getLatitude(), endDeviceList.get(i).getLongitude());
+        }
+    }
 
-
-        coordinates.add(new MapCoordinate(0, 6));
-        coordinates.add(new MapCoordinate(6, 10));
-        coordinates.add(new MapCoordinate(1, 4));
-        coordinates.add(new MapCoordinate(4, 5));
-        coordinates.add(new MapCoordinate(5, 8));
-        coordinates.add(new MapCoordinate(8, 13));
-        coordinates.add(new MapCoordinate(7, 11));
-        coordinates.add(new MapCoordinate(3, 9));
-        coordinates.add(new MapCoordinate(9, 14));
-        return coordinates;
+    // registedNode를 연결하기 위한 순서쌍
+    private List<MapCoordinate> makeOrderedPair() {
+        orderedPair = new ArrayList<>();
+        orderedPair.add(new MapCoordinate(0, 1));
+        orderedPair.add(new MapCoordinate(1, 2));
+        orderedPair.add(new MapCoordinate(2, 3));
+        orderedPair.add(new MapCoordinate(6, 7));
+        orderedPair.add(new MapCoordinate(7, 8));
+        orderedPair.add(new MapCoordinate(8, 9));
+        orderedPair.add(new MapCoordinate(10, 11));
+        orderedPair.add(new MapCoordinate(11, 12));
+        orderedPair.add(new MapCoordinate(12, 13));
+        orderedPair.add(new MapCoordinate(13, 14));
+        orderedPair.add(new MapCoordinate(0, 6));
+        orderedPair.add(new MapCoordinate(6, 10));
+        orderedPair.add(new MapCoordinate(1, 4));
+        orderedPair.add(new MapCoordinate(4, 5));
+        orderedPair.add(new MapCoordinate(5, 8));
+        orderedPair.add(new MapCoordinate(8, 13));
+        orderedPair.add(new MapCoordinate(7, 11));
+        orderedPair.add(new MapCoordinate(3, 9));
+        orderedPair.add(new MapCoordinate(9, 14));
+        return orderedPair;
     }
 
     private void drawLine(GoogleMap googleMap) {
-        for (int i = 0; i < coordinates.size(); i++) {
-            googleMap.addPolyline(new PolylineOptions().add(latLngList[coordinates.get(i).getX_dot()], latLngList[coordinates.get(i).getY_dot()]).width(5).color(Color.GREEN));
+        for (int i = 0; i < orderedPair.size(); i++) {
+            googleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(i).getX_dot()], registedCoordinates[orderedPair.get(i).getY_dot()]).width(5).color(Color.GREEN));
         }
     }
 
@@ -174,6 +150,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 registedNodeList.add(registedNode);
                 if (registedNode.getID().equals("24")) {
                     onMapReady(mGoogleMap);
+                    setRegistCoordinates(registedNodeList.size());
+                    setEndDeviceCoordinates(endDeviceList.size());
                     initNode(mGoogleMap);
                 }
             }
@@ -202,12 +180,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         firebaseDatabaseRef.child("Node").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-//                EndDevice a = dataSnapshot.getValue(EndDevice.class);
-//                list_EndDevice.add(a);
-//                if (a.getID().equals("24")) {
-//                    onMapReady(mGoogleMap);
-//                    initNode(mGoogleMap);
-//                }
+                EndDevice endDevice = dataSnapshot.getValue(EndDevice.class);
+                endDeviceList.add(endDevice);
             }
 
             @Override
