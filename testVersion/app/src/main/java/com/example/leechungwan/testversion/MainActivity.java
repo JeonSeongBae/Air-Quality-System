@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
-    private List<EndDevice> list_EndDevice;
+    private List<RegistedNode> registedNodeList;
     private List<MapCoordinate> coordinates;
     private LatLng[] latLngList;
     private LatLng[] nodeCoordinates;
@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        list_EndDevice = new ArrayList<EndDevice>();
+        registedNodeList = new ArrayList<RegistedNode>();
         coordinates = makeCoordinate();
         setNodeCoordinates(coordinates.size());
 
@@ -50,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         firebaseDatabase = FirebaseDatabase.getInstance();
         firebaseDatabaseRef = firebaseDatabase.getReference();
         updateNode();
-
     }
 
     @Override
@@ -63,9 +62,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void initNode(GoogleMap googleMap) {
-        latLngList = new LatLng[list_EndDevice.size()];
-        for (int i = 0; i < list_EndDevice.size(); i++) {
-            latLngList[i] = new LatLng(list_EndDevice.get(i).getLatitude(), list_EndDevice.get(i).getLongitude());
+        latLngList = new LatLng[registedNodeList.size()];
+        for (int i = 0; i < registedNodeList.size(); i++) {
+            latLngList[i] = new LatLng(registedNodeList.get(i).getLatitude(), registedNodeList.get(i).getLongitude());
         }
 
         for (int i = 0; i<nodeCoordinates.length;i++){
@@ -75,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             googleMap.addMarker(node);
         }
 
-        for (int idx = 0; idx < list_EndDevice.size(); idx++) {
+        for (int idx = 0; idx < registedNodeList.size(); idx++) {
             MarkerOptions markerOptions = new MarkerOptions();
             markerOptions
                     .position(latLngList[idx])
@@ -171,12 +170,44 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         firebaseDatabaseRef.child("registedNode").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                EndDevice a = dataSnapshot.getValue(EndDevice.class);
-                list_EndDevice.add(a);
-                if (a.getID().equals("24")) {
+                RegistedNode registedNode = dataSnapshot.getValue(RegistedNode.class);
+                registedNodeList.add(registedNode);
+                if (registedNode.getID().equals("24")) {
                     onMapReady(mGoogleMap);
                     initNode(mGoogleMap);
                 }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        firebaseDatabaseRef.child("Node").addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+//                EndDevice a = dataSnapshot.getValue(EndDevice.class);
+//                list_EndDevice.add(a);
+//                if (a.getID().equals("24")) {
+//                    onMapReady(mGoogleMap);
+//                    initNode(mGoogleMap);
+//                }
             }
 
             @Override
