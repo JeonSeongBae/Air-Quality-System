@@ -10,22 +10,21 @@ import java.util.Map;
 
 public class EndDevice {
 
-    private String color;
     private String ID;
     private double density;
     private double latitude;
     private double longitude;
-
+    private String time;
     public EndDevice(){
         // Defalut constructor required for calls to DataSnapshot.getValue(EndDevice.class)
     }
 
-    public EndDevice(String color, String ID, double density, double latitude, double longitude) {
-        this.color = color;
+    public EndDevice(String ID, double density, double latitude, double longitude, String time) {
         this.ID = ID;
         this.density = density;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.time = time;
     }
 
     @Exclude
@@ -35,12 +34,8 @@ public class EndDevice {
         result.put("density", density);
         result.put("latitude", latitude);
         result.put("longitude", longitude);
-
+        result.put("time", time);
         return result;
-    }
-
-    public void setColor(String color) {
-        this.color = color;
     }
 
     public void setID(String ID) {
@@ -51,16 +46,20 @@ public class EndDevice {
         this.density = density;
     }
 
+    public void setTime(String time) {
+        this.time = time;
+    }
+
+    public String getTime() {
+        return time;
+    }
+
     public void setLatitude(double latitude) {
         this.latitude = latitude;
     }
 
     public void setLongitude(double longitude) {
         this.longitude = longitude;
-    }
-
-    public String getColor() {
-        return color;
     }
 
     public String getID() {
@@ -79,4 +78,3 @@ public class EndDevice {
         return longitude;
     }
 }
-
