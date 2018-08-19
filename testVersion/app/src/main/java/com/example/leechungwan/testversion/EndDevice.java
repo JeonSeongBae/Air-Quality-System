@@ -11,7 +11,7 @@ import java.util.Map;
 public class EndDevice {
 
     private String ID;
-    private double density;
+    private int density;
     private double latitude;
     private double longitude;
     private String time;
@@ -19,7 +19,7 @@ public class EndDevice {
         // Defalut constructor required for calls to DataSnapshot.getValue(EndDevice.class)
     }
 
-    public EndDevice(String ID, double density, double latitude, double longitude, String time) {
+    public EndDevice(String ID, int density, double latitude, double longitude, String time) {
         this.ID = ID;
         this.density = density;
         this.latitude = latitude;
@@ -42,7 +42,7 @@ public class EndDevice {
         this.ID = ID;
     }
 
-    public void setDensity(double density) {
+    public void setDensity(int density) {
         this.density = density;
     }
 
@@ -66,7 +66,7 @@ public class EndDevice {
         return ID;
     }
 
-    public double getDensity() {
+    public int getDensity() {
         return density;
     }
 
