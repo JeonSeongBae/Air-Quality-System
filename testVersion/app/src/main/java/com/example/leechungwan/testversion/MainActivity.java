@@ -1,8 +1,11 @@
 package com.example.leechungwan.testversion;
 
+import android.app.FragmentTransaction;
 import android.graphics.Color;
+import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -29,6 +32,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FirebaseDatabase firebaseDatabase;
     private DatabaseReference firebaseDatabaseRef;
     private GoogleMap mGoogleMap = null;
+    private MapFragment mapFragment;
+    private EndDevice updateDevice;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,9 +44,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         endDeviceList = new ArrayList<>();
         orderedPair = makeOrderedPair();
 
-
         android.app.FragmentManager fragmentManager = getFragmentManager();
-        MapFragment mapFragment = (MapFragment) fragmentManager
+        mapFragment = (MapFragment) fragmentManager
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
@@ -60,13 +64,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        if (mGoogleMap != null) {
+            mGoogleMap.clear();
+            drawLine(mGoogleMap);
+        }
+    }
+
     private void initNode(GoogleMap googleMap) {
-//        for (int i = 0; i < nodeCoordinates.length; i++) {
-//            MarkerOptions node = new MarkerOptions();
-//            node.position(nodeCoordinates[i])
-//                    .title("0" + i);
-//            googleMap.addMarker(node);
-//        }
+        addMarker();
+        LatLng startLocation = new LatLng(36.369906, 127.345907);
+        googleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
+        googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        drawLine(mGoogleMap);
+    }
+
+    private void addMarker(){
+        for (int i = 0; i < endDeviceCoordinates.length; i++) {
+            MarkerOptions node = new MarkerOptions();
+            node.position(endDeviceCoordinates[i])
+                    .title(endDeviceList.get(i).getID());
+            mGoogleMap.addMarker(node);
+        }
 
         for (int idx = 0; idx < registedNodeList.size(); idx++) {
             MarkerOptions markerOptions = new MarkerOptions();
@@ -74,13 +96,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .position(registedCoordinates[idx])
                     //.title(list_EndDevice.get(idx).getID())
                     .alpha(0.01f);
-            googleMap.addMarker(markerOptions);
+            mGoogleMap.addMarker(markerOptions);
         }
-
-        LatLng startLocation = new LatLng(36.369906, 127.345907);
-        googleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
-        googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-        drawLine(mGoogleMap);
     }
 
     private void setRegistCoordinates(int size) {
@@ -124,8 +141,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void drawLine(GoogleMap googleMap) {
         for (int i = 0; i < orderedPair.size(); i++) {
-            googleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(i).getX_dot()], registedCoordinates[orderedPair.get(i).getY_dot()]).width(5).color(Color.GREEN));
+            int color = determineColor(endDeviceList.get(i).getDensity());
+            googleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(i).getX_dot()], registedCoordinates[orderedPair.get(i).getY_dot()]).width(10).color(color));
         }
+    }
+
+    private void updateLine() {
+        mGoogleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getX_dot()], registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getY_dot()]));
     }
 
     private int determineColor(int concentration) {
@@ -133,14 +155,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return Color.BLUE;
         } else if (concentration >= 30 && concentration < 80) {
             return Color.GREEN;
-        } else if (concentration > 80 && concentration < 150) {
-            return Color.YELLOW;
+        } else if (concentration >= 80 && concentration < 150) {
+            return -100000;
         } else if (concentration >= 150) {
             return Color.RED;
         }
 
         return -1;
     }
+
 
     private void updateNode() {
         firebaseDatabaseRef.child("registedNode").addChildEventListener(new ChildEventListener() {
@@ -186,7 +209,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
+                Log.d("Change", "바뀜감지.!!");
+                updateDevice =  dataSnapshot.getValue(EndDevice.class);
+                onResume();
             }
 
             @Override
