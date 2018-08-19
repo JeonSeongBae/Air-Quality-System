@@ -58,10 +58,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
-        LatLng startLocation = new LatLng(36.369906, 127.345907);
-        // 카메라를 위치로 옮긴다.
-        googleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
-        googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        setStartCoordinate();
     }
 
     @Override
@@ -69,17 +66,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onResume();
 
         if (mGoogleMap != null) {
-            mGoogleMap.clear();
-            drawLine(mGoogleMap);
+            //mGoogleMap.clear();
+            updateLine();
         }
     }
 
     private void initNode(GoogleMap googleMap) {
+        setStartCoordinate();
         addMarker();
+        drawLine();
+    }
+
+    private void setStartCoordinate(){
         LatLng startLocation = new LatLng(36.369906, 127.345907);
-        googleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
-        googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-        drawLine(mGoogleMap);
+        mGoogleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
+        mGoogleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
     }
 
     private void addMarker(){
@@ -139,15 +140,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return orderedPair;
     }
 
-    private void drawLine(GoogleMap googleMap) {
+    private void drawLine() {
         for (int i = 0; i < orderedPair.size(); i++) {
             int color = determineColor(endDeviceList.get(i).getDensity());
-            googleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(i).getX_dot()], registedCoordinates[orderedPair.get(i).getY_dot()]).width(10).color(color));
+            mGoogleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(i).getX_dot()], registedCoordinates[orderedPair.get(i).getY_dot()]).width(10).color(color));
         }
     }
 
     private void updateLine() {
-        mGoogleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getX_dot()], registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getY_dot()]));
+        int color = determineColor(updateDevice.getDensity());
+        mGoogleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getX_dot()], registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getY_dot()]).width(10).color(color));
     }
 
     private int determineColor(int concentration) {
