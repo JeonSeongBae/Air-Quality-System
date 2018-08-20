@@ -1,5 +1,6 @@
 package com.example.leechungwan.testversion;
 
+import android.app.AlertDialog;
 import android.app.FragmentTransaction;
 import android.graphics.Color;
 import android.support.v4.app.Fragment;
@@ -13,6 +14,7 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -34,7 +36,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap mGoogleMap = null;
     private MapFragment mapFragment;
     private EndDevice updateDevice;
-
+    private Polyline polyline;
+    private List<Polyline> polylines = new ArrayList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,7 +69,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onResume();
 
         if (mGoogleMap != null) {
-            //mGoogleMap.clear();
             updateLine();
         }
     }
@@ -95,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             MarkerOptions markerOptions = new MarkerOptions();
             markerOptions
                     .position(registedCoordinates[idx])
-                    //.title(list_EndDevice.get(idx).getID())
+                    //.title(registedNodeList.get(idx).getID())
                     .alpha(0.01f);
             mGoogleMap.addMarker(markerOptions);
         }
@@ -118,38 +120,53 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // registedNode를 연결하기 위한 순서쌍
     private List<MapCoordinate> makeOrderedPair() {
         orderedPair = new ArrayList<>();
-        orderedPair.add(new MapCoordinate(0, 1));
-        orderedPair.add(new MapCoordinate(1, 2));
-        orderedPair.add(new MapCoordinate(2, 3));
-        orderedPair.add(new MapCoordinate(6, 7));
-        orderedPair.add(new MapCoordinate(7, 8));
-        orderedPair.add(new MapCoordinate(8, 9));
-        orderedPair.add(new MapCoordinate(10, 11));
-        orderedPair.add(new MapCoordinate(11, 12));
-        orderedPair.add(new MapCoordinate(12, 13));
-        orderedPair.add(new MapCoordinate(13, 14));
-        orderedPair.add(new MapCoordinate(0, 6));
-        orderedPair.add(new MapCoordinate(6, 10));
-        orderedPair.add(new MapCoordinate(1, 4));
-        orderedPair.add(new MapCoordinate(4, 5));
-        orderedPair.add(new MapCoordinate(5, 8));
-        orderedPair.add(new MapCoordinate(8, 13));
-        orderedPair.add(new MapCoordinate(7, 11));
-        orderedPair.add(new MapCoordinate(3, 9));
-        orderedPair.add(new MapCoordinate(9, 14));
+        orderedPair.add(new MapCoordinate(0, 1));   // Node 0
+        orderedPair.add(new MapCoordinate(1, 2));   // Node 1
+        orderedPair.add(new MapCoordinate(2, 3));   // Node 2
+        orderedPair.add(new MapCoordinate(6, 7));   // Node 3
+        orderedPair.add(new MapCoordinate(7, 8));   // Node 4
+        orderedPair.add(new MapCoordinate(8, 9));   // Node 5
+        orderedPair.add(new MapCoordinate(10, 11)); // Node 6
+        orderedPair.add(new MapCoordinate(11, 12)); // Node 7
+        orderedPair.add(new MapCoordinate(12, 13)); // Node 8
+        orderedPair.add(new MapCoordinate(13, 14)); // Node 9
+        orderedPair.add(new MapCoordinate(0, 6));   // Node 11
+        orderedPair.add(new MapCoordinate(6, 10));  // Node 10
+        orderedPair.add(new MapCoordinate(1, 4));   // Node 15
+        orderedPair.add(new MapCoordinate(4, 5));   // Node 14
+        orderedPair.add(new MapCoordinate(5, 8));   // Node 13
+        orderedPair.add(new MapCoordinate(8, 13));  // Node 12
+        orderedPair.add(new MapCoordinate(7, 11));  // Node 16
+        orderedPair.add(new MapCoordinate(3, 9));   // Node 18
+        orderedPair.add(new MapCoordinate(9, 14));  // Node 17
         return orderedPair;
     }
 
     private void drawLine() {
         for (int i = 0; i < orderedPair.size(); i++) {
             int color = determineColor(endDeviceList.get(i).getDensity());
-            mGoogleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(i).getX_dot()], registedCoordinates[orderedPair.get(i).getY_dot()]).width(10).color(color));
+            LatLng x_dot = registedCoordinates[orderedPair.get(i).getX_dot()];
+            LatLng y_dot = registedCoordinates[orderedPair.get(i).getY_dot()];
+            polyline = mGoogleMap.addPolyline(new PolylineOptions().add(x_dot, y_dot).width(10).color(color));
+            polylines.add(polyline);
         }
     }
 
     private void updateLine() {
         int color = determineColor(updateDevice.getDensity());
-        mGoogleMap.addPolyline(new PolylineOptions().add(registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getX_dot()], registedCoordinates[orderedPair.get(Integer.parseInt(updateDevice.getID()) - 1).getY_dot()]).width(10).color(color));
+        int id = Integer.parseInt(updateDevice.getID());
+
+        LatLng x_dot = registedCoordinates[orderedPair.get(id).getX_dot()];
+        LatLng y_dot = registedCoordinates[orderedPair.get(id).getY_dot()];
+        PolylineOptions polylineOptions = new PolylineOptions().add(x_dot, y_dot).width(10).color(color);
+        polylines.get(id).remove();
+        polylines.remove(id);
+        polyline = mGoogleMap.addPolyline(polylineOptions);
+        polylines.add(id, polyline);
+    }
+
+    private void deletePolyline(Polyline polyline){
+
     }
 
     private int determineColor(int concentration) {
@@ -173,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 RegistedNode registedNode = dataSnapshot.getValue(RegistedNode.class);
                 registedNodeList.add(registedNode);
-                if (registedNode.getID().equals("24")) {
+                if (registedNode.getID().equals("14")) {
                     onMapReady(mGoogleMap);
                     setRegistCoordinates(registedNodeList.size());
                     setEndDeviceCoordinates(endDeviceList.size());
