@@ -7,6 +7,7 @@ import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private EndDevice updateDevice;
     private Polyline polyline;
     private List<Polyline> polylines = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,23 +77,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void initNode(GoogleMap googleMap) {
         setStartCoordinate();
-        addMarker();
+        //addMarker();
         drawLine();
+        lineClickListener();
     }
 
-    private void setStartCoordinate(){
+    private void setStartCoordinate() {
         LatLng startLocation = new LatLng(36.369906, 127.345907);
         mGoogleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
         mGoogleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
     }
 
-    private void addMarker(){
-        for (int i = 0; i < endDeviceCoordinates.length; i++) {
-            MarkerOptions node = new MarkerOptions();
-            node.position(endDeviceCoordinates[i])
-                    .title(endDeviceList.get(i).getID());
-            mGoogleMap.addMarker(node);
-        }
+    private void addMarker() {
+        // 미세먼저 측정 장비 위치 Node PIN 찍기
+//        for (int i = 0; i < endDeviceCoordinates.length; i++) {
+//            MarkerOptions node = new MarkerOptions();
+//            node.position(endDeviceCoordinates[i])
+//                    .title(endDeviceList.get(i).getID());
+//            mGoogleMap.addMarker(node);
+//        }
 
         for (int idx = 0; idx < registedNodeList.size(); idx++) {
             MarkerOptions markerOptions = new MarkerOptions();
@@ -148,6 +152,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             LatLng x_dot = registedCoordinates[orderedPair.get(i).getX_dot()];
             LatLng y_dot = registedCoordinates[orderedPair.get(i).getY_dot()];
             polyline = mGoogleMap.addPolyline(new PolylineOptions().add(x_dot, y_dot).width(10).color(color));
+            polyline.setClickable(true);
             polylines.add(polyline);
         }
     }
@@ -162,11 +167,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         polylines.get(id).remove();
         polylines.remove(id);
         polyline = mGoogleMap.addPolyline(polylineOptions);
+        polyline.setClickable(true);
         polylines.add(id, polyline);
-    }
-
-    private void deletePolyline(Polyline polyline){
-
     }
 
     private int determineColor(int concentration) {
@@ -183,6 +185,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return -1;
     }
 
+    private void lineClickListener() {
+        mGoogleMap.setOnPolylineClickListener(new GoogleMap.OnPolylineClickListener() {
+            @Override
+            public void onPolylineClick(Polyline polyline) {
+                for (int i = 0; i < polylines.size(); i++) {
+                    Polyline line = polylines.get(i);
+                    if (line.equals(polyline)) {
+                        String msg = "미세먼지: "+endDeviceList.get(i).getDensity() +"\n동기화시간: " + endDeviceList.get(i).getTime();
+                        Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+    }
 
     private void updateNode() {
         firebaseDatabaseRef.child("registedNode").addChildEventListener(new ChildEventListener() {
@@ -229,7 +245,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String s) {
                 Log.d("Change", "바뀜감지.!!");
-                updateDevice =  dataSnapshot.getValue(EndDevice.class);
+                updateDevice = dataSnapshot.getValue(EndDevice.class);
                 onResume();
             }
 
