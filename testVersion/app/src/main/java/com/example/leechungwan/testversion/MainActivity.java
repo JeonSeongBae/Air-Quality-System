@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -49,9 +50,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         endDeviceList = new ArrayList<>();
         orderedPair = makeOrderedPair();
 
-        android.app.FragmentManager fragmentManager = getFragmentManager();
-        mapFragment = (MapFragment) fragmentManager
-                .findFragmentById(R.id.map);
+        MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
         // 데이터베이스 Instance 생성
@@ -84,8 +83,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void setStartCoordinate() {
         LatLng startLocation = new LatLng(36.369906, 127.345907);
-        mGoogleMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
-        mGoogleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(startLocation, 15);
+        mGoogleMap.moveCamera(cameraUpdate);
     }
 
     private void addMarker() {
@@ -192,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 for (int i = 0; i < polylines.size(); i++) {
                     Polyline line = polylines.get(i);
                     if (line.equals(polyline)) {
-                        String msg = "미세먼지: "+endDeviceList.get(i).getDensity() +"\n동기화시간: " + endDeviceList.get(i).getTime();
+                        String msg = "미세먼지: " + endDeviceList.get(i).getDensity() + "\n동기화시간: " + endDeviceList.get(i).getTime();
                         Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
                     }
                 }
