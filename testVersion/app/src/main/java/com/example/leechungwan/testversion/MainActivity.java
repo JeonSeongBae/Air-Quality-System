@@ -1,6 +1,7 @@
 package com.example.leechungwan.testversion;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.FragmentTransaction;
 import android.content.DialogInterface;
@@ -9,10 +10,14 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -66,10 +71,17 @@ public class MainActivity extends AppCompatActivity
     private GoogleApiClient mGoogleApiClient = null;
 
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
+    private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 2002;
     private static final int UPDATE_INTERVAL_MS = 1000;  // 1초
     private static final int FASTEST_UPDATE_INTERVAL_MS = 500; // 0.5초
 
     private boolean mRequestingLocationUpdates = false;
+    boolean askPermissionOnceAgain = false;
+    private boolean mMoveMapByAPI = true;
+    private boolean mMoveMapByUser = true;
+
+    LatLng currentPosition;
+    Location mCurrentLocatiion;
 
     LocationRequest locationRequest = new LocationRequest()
             .setPriority(LocationRequest.PRIORITY_LOW_POWER)
@@ -88,6 +100,7 @@ public class MainActivity extends AppCompatActivity
         endDeviceList = new ArrayList<>();
         orderedPair = makeOrderedPair();
 
+        mActivity = this;
         buildGoogleApiClient();
 
         mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
@@ -140,9 +153,91 @@ public class MainActivity extends AppCompatActivity
             if (!mRequestingLocationUpdates) startLocationUpdates();
         }
 
+        if (askPermissionOnceAgain) {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                askPermissionOnceAgain = false;
+
+                checkPermissions();
+            }
+        }
+
         if (mGoogleMap != null) {
             updateLine();
         }
+    }
+
+    // runtime permission 처리.
+    @TargetApi(Build.VERSION_CODES.M)
+    private void checkPermissions() {
+        boolean fineLocationRationale = ActivityCompat
+                .shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.ACCESS_FINE_LOCATION);
+        int hasFineLocationPermission = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if (hasFineLocationPermission == PackageManager
+                .PERMISSION_DENIED && fineLocationRationale)
+            showDialogForPermission("앱을 실행하려면 퍼미션을 허가하셔야합니다.");
+
+        else if (hasFineLocationPermission
+                == PackageManager.PERMISSION_DENIED && !fineLocationRationale) {
+            showDialogForPermissionSetting("퍼미션 거부 + Don't ask again(다시 묻지 않음) " +
+                    "체크 박스를 설정한 경우로 설정에서 퍼미션 허가해야합니다.");
+        } else if (hasFineLocationPermission == PackageManager.PERMISSION_GRANTED) {
+
+
+            if (mGoogleApiClient.isConnected() == false) {
+                mGoogleApiClient.connect();
+            }
+        }
+    }
+
+    private void showDialogForPermissionSetting(String msg) {
+        android.support.v7.app.AlertDialog.Builder builder = new android.support.v7.app.AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("알림");
+        builder.setMessage(msg);
+        builder.setCancelable(true);
+        builder.setPositiveButton("예", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+
+                askPermissionOnceAgain = true;
+
+                Intent myAppSettings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + mActivity.getPackageName()));
+                myAppSettings.addCategory(Intent.CATEGORY_DEFAULT);
+                myAppSettings.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mActivity.startActivity(myAppSettings);
+            }
+        });
+        builder.setNegativeButton("아니오", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                finish();
+            }
+        });
+        builder.create().show();
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
+    private void showDialogForPermission(String msg) {
+        android.support.v7.app.AlertDialog.Builder builder = new android.support.v7.app.AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("알림");
+        builder.setMessage(msg);
+        builder.setCancelable(false);
+        builder.setPositiveButton("예", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                ActivityCompat.requestPermissions(mActivity,
+                        new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                        PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+            }
+        });
+
+        builder.setNegativeButton("아니오", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                finish();
+            }
+        });
+        builder.create().show();
     }
 
     private void startLocationUpdates() {
@@ -381,7 +476,29 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
+        if (mRequestingLocationUpdates == false) {
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                int hasFineLocationPermission = ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_FINE_LOCATION);
+
+                if (hasFineLocationPermission == PackageManager.PERMISSION_DENIED) {
+
+                    ActivityCompat.requestPermissions(mActivity,
+                            new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                            PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+
+                } else {
+                    startLocationUpdates();
+                    mGoogleMap.setMyLocationEnabled(true);
+                }
+
+            } else {
+                startLocationUpdates();
+                mGoogleMap.setMyLocationEnabled(true);
+            }
+        }
     }
 
     @Override
@@ -391,13 +508,38 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        setDefaultLocation();
+    }
 
+    private void setDefaultLocation() {
+        mMoveMapByUser = false;
+
+        //디폴트 위치, Seoul
+        LatLng DEFAULT_LOCATION = new LatLng(37.56, 126.97);
+
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(DEFAULT_LOCATION, 15);
+        mGoogleMap.moveCamera(cameraUpdate);
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(currentLocation);
-        mGoogleMap.moveCamera(cameraUpdate);
+        currentPosition
+                = new LatLng(location.getLatitude(), location.getLongitude());
+
+        //현재 위치에 마커 생성하고 이동
+        setCurrentLocation(location);
+
+        mCurrentLocatiion = location;
+    }
+
+    private void setCurrentLocation(Location location) {
+        mMoveMapByUser = false;
+
+        LatLng currentLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+
+        if (mMoveMapByAPI) {
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(currentLatLng);
+            mGoogleMap.moveCamera(cameraUpdate);
+        }
     }
 }
