@@ -1,14 +1,24 @@
 package com.example.leechungwan.testversion;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.app.FragmentTransaction;
 import android.graphics.Color;
+import android.location.Location;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -24,10 +34,15 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.security.Permission;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity
+        implements OnMapReadyCallback,
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
     private List<RegistedNode> registedNodeList;    // Line을 그릴 PIN 객체를 저장함.
     private List<EndDevice> endDeviceList;          // 미세먼지 농도가 저장된 노드를 저장함.
     private List<MapCoordinate> orderedPair;        // Line을 그릴 PIN의 순서쌍을 저장.
@@ -41,16 +56,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Polyline polyline;
     private List<Polyline> polylines = new ArrayList<>();
 
+    private AppCompatActivity mActivity;
+    private GoogleApiClient mGoogleApiClient = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
 
         registedNodeList = new ArrayList<>();
         endDeviceList = new ArrayList<>();
         orderedPair = makeOrderedPair();
 
-        MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
         // 데이터베이스 Instance 생성
@@ -66,16 +87,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
+    protected void onStart() {
+        if (mGoogleApiClient != null && mGoogleApiClient.isConnected() == false) {
+
+            Log.d("onStart: ", "onStart: mGoogleApiClient connect");
+            mGoogleApiClient.connect();
+        }
+        super.onStart();
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
-
         if (mGoogleMap != null) {
             updateLine();
         }
     }
 
     private void initNode(GoogleMap googleMap) {
-        setStartCoordinate();
         //addMarker();
         drawLine();
         lineClickListener();
@@ -263,5 +292,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         });
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(currentLocation);
+        mGoogleMap.moveCamera(cameraUpdate);
     }
 }
