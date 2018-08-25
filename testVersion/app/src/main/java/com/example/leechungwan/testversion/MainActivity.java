@@ -71,6 +71,8 @@ public class MainActivity extends AppCompatActivity
         endDeviceList = new ArrayList<>();
         orderedPair = makeOrderedPair();
 
+        buildGoogleApiClient();
+
         mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
@@ -78,6 +80,16 @@ public class MainActivity extends AppCompatActivity
         firebaseDatabase = FirebaseDatabase.getInstance();
         firebaseDatabaseRef = firebaseDatabase.getReference();
         updateNode();
+    }
+
+    protected synchronized void buildGoogleApiClient(){
+        if(mGoogleApiClient == null){
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
     }
 
     @Override
