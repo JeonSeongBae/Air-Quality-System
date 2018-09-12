@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity
 
     private static String TAG = "SCAN";
     private static int PERIOD_READ = 100;
-
+    private static int cycle = 1;
     public static boolean isConnected = false;
 
     // BLE
@@ -249,17 +249,27 @@ public class MainActivity extends AppCompatActivity
             final BluetoothDevice device = result.getDevice();
             if (device.getAddress().equals(macAddress)) {
                 //connectToDevice(device);
-
+                boolean isValue = false;
 
                 // print BLE bytes
-                String re = "[";
+                String value = "";
                 for ( Byte obj : result.getScanRecord().getBytes())
                 {
-                    re += String.format("%02X,",obj);
+                    if(isValue){
+                        String dust = String.format("%02X",obj);
+                        if (dust.equals("00")) break;
+                        value += dust.substring(1);
+                    }
+                    if (obj == -1){
+                        isValue = true;
+                    }
                 }
-                re += "]";
-                Log.d("SCAN1", "result:" + re);
+                cycle++;
+                Log.d("SCAN1", "result:" + value);
 
+
+                firebaseDatabaseRef.child("/Node/").child("2").child("density").setValue(Integer.parseInt(value)*10);
+                
                 // parsed data를 인터넷 파이어베이스 서버로 전송
             }
         }
@@ -709,7 +719,6 @@ public class MainActivity extends AppCompatActivity
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
             }
 
             @Override
