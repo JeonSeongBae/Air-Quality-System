@@ -4,6 +4,20 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.FragmentTransaction;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -22,7 +36,11 @@ import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -53,7 +71,8 @@ public class MainActivity extends AppCompatActivity
         implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        LocationListener {
+        LocationListener,
+        Runnable{
     private List<RegistedNode> registedNodeList;    // Line을 그릴 PIN 객체를 저장함.
     private List<EndDevice> endDeviceList;          // 미세먼지 농도가 저장된 노드를 저장함.
     private List<MapCoordinate> orderedPair;        // Line을 그릴 PIN의 순서쌍을 저장.
@@ -79,6 +98,33 @@ public class MainActivity extends AppCompatActivity
     boolean askPermissionOnceAgain = false;
     private boolean mMoveMapByAPI = true;
     private boolean mMoveMapByUser = true;
+
+    private BluetoothGattCharacteristic UART_Read;
+    private BluetoothGattCharacteristic UART_Write;
+    private BluetoothGattCharacteristic PWM_Read_Write;
+    private BluetoothGattCharacteristic PIO_Read_Write;
+    private BluetoothGattCharacteristic PIO_State;
+    private BluetoothGattCharacteristic PIO_Direction;
+    private BluetoothGattCharacteristic AIO_Read;
+
+    private static String TAG = "SCAN";
+    private static int PERIOD_READ = 100;
+
+    public static boolean isConnected = false;
+
+    // BLE
+    private BluetoothLeScanner mLEScanner;
+    private ScanSettings settings;
+    private BluetoothAdapter mBluetoothAdapter;
+    private List<ScanFilter> filters;
+    private BluetoothGatt mGatt;
+
+
+    // Etc
+    private int REQUEST_ENABLE_BT = 1;
+    private boolean button = false;
+    private boolean isREAD = false;
+    private String macAddress = "74:F0:7D:C9:CD:2F";
 
     LatLng currentPosition;
     Location mCurrentLocatiion;
@@ -110,8 +156,236 @@ public class MainActivity extends AppCompatActivity
         firebaseDatabase = FirebaseDatabase.getInstance();
         firebaseDatabaseRef = firebaseDatabase.getReference();
         updateNode();
+        setup();
+        setupBLE();
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()) {
+            scanLeDevice(false);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        button = false;
+
+        if (mGatt == null) {
+            return;
+        }
+        mGatt.close();
+        mGatt = null;
+        super.onDestroy();
+    }
+
+    private void setup() {
+
+        button = true;
+        isREAD = false;
+
+        Thread thread = new Thread(this);
+        thread.start();
+    }
+
+    private void setupBLE() {
+        // Use this check to determine whether BLE is supported on the device.
+        // Then you can selectively disable BLE-related features.
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, "이 디바이스는 BLE를 지원하지 않습니다.", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+
+        // Initializes a Bluetooth adapter. For API level 18 and above,
+        // get a reference to BluetoothAdapter through BluetoothManager.
+        final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        mBluetoothAdapter = bluetoothManager.getAdapter();
+
+        // Checks if Bluetooth is supported on the device.
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, "이 디바이스는 BLE를 지원하지 않습니다.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+    }
+
+    protected void onRead() {
+        isREAD = true;
+    }
+
+    protected void offRead() {
+        isREAD = false;
+    }
+
+    protected void disconnection() {
+        if (mGatt != null) {
+            mGatt.disconnect();
+        }
+    }
+
+    protected void write(byte[] bytes) {
+        UART_Write.setValue(bytes);
+        UART_Write.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        mGatt.writeCharacteristic(UART_Write);
+    }
+
+    protected boolean scanLeDevice(final boolean enable) {
+        if (enable) {
+            mLEScanner.startScan(filters, settings, mScanCallback);
+        } else {
+            mLEScanner.stopScan(mScanCallback);
+        }
+        return enable;
+    }
+
+    private boolean isConnection = false;
+
+    // BLE signal 수신 시 호출되는 함수
+    private ScanCallback mScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+
+            final BluetoothDevice device = result.getDevice();
+            if (device.getAddress().equals(macAddress)) {
+                //connectToDevice(device);
+
+
+                // print BLE bytes
+                String re = "[";
+                for ( Byte obj : result.getScanRecord().getBytes())
+                {
+                    re += String.format("%02X,",obj);
+                }
+                re += "]";
+                Log.d("SCAN1", "result:" + re);
+
+                // parsed data를 인터넷 파이어베이스 서버로 전송
+            }
+        }
+
+        @Override
+        public void onBatchScanResults(List<ScanResult> results) {
+            for (ScanResult sr : results) {
+                Log.i("SCAN2", "ScanResult - Results:" + sr.toString());
+            }
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            Log.e(TAG, "Scan Failed:Error Code: " + errorCode);
+        }
+    };
+
+    private BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+
+        @Override
+        public void onConnectionStateChange(final BluetoothGatt gatt, int status, int newState) {
+            Log.i(TAG, "onConnectionStateChange:" + "Status: " + status);
+
+            switch (newState) {
+                case BluetoothProfile.STATE_CONNECTED:
+
+                    gatt.discoverServices();
+
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            Toast.makeText(getApplicationContext(), "Connected: " + gatt.getDevice().getAddress(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    onRead();
+
+                    break;
+                case BluetoothProfile.STATE_DISCONNECTED:
+                    offRead();
+
+                    Log.e(TAG, "gattCallback:" + "STATE_DISCONNECTED");
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            Toast.makeText(getApplicationContext(), "Disconnected", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                    switch (status) {
+                        case 133:
+                        case BluetoothGatt.GATT_FAILURE:
+                            Log.e(TAG, "gattCallback:" + "GATT_FAILURE");
+                            break;
+                        default:
+                    }
+                    mGatt.close();
+                    isConnection = false;
+                    break;
+                case BluetoothAdapter.STATE_OFF:
+                    Log.e(TAG, "gattCallback:" + "STATE_OFF");
+                    break;
+                default:
+                    Log.e(TAG, "gattCallback:" + "STATE_OTHER");
+            }
+        }
+
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            // Log.i(TAG, "onServicesDiscovered:" + services.toString());
+            List<BluetoothGattService> services = gatt.getServices();
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            // Log.i(TAG, "onCharacteristicWrite:" + characteristic.toString());
+
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            // Log.i(TAG, "onCharacteristicRead:" + characteristic.getValue());
+        }
+    };
+
+    @Override
+    public void run() {
+        while (button) {
+            try {
+                if (isREAD && mGatt != null) {
+                    mGatt.readCharacteristic(UART_Read);
+                    byte[] data = UART_Read.getValue();
+
+                    Log.d("READ", "Dev:");
+
+                    if (data == null)
+                        continue;
+
+                    if (data.length > 0) {
+                        final StringBuilder stringBuilder = new StringBuilder(data.length);
+                        int j = data.length;
+                        for (int i = 0; i < j; i++) {
+                            byte byteChar = data[i];
+
+                            if (byteChar == '\r' || byteChar == '\n')
+                                continue;
+
+                            stringBuilder.append((char) byteChar);
+                        }
+                        Log.d("READ",
+                                "Dev:" + mGatt.getDevice().getAddress() + ", Read: [" + stringBuilder.toString() + "]");
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                            }
+                        });
+                    }
+                }
+
+                Thread.sleep(PERIOD_READ);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
     protected synchronized void buildGoogleApiClient() {
         if (mGoogleApiClient == null) {
             mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -149,6 +423,15 @@ public class MainActivity extends AppCompatActivity
     public void onResume() {
         super.onResume();
 
+        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        } else {
+            mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
+            settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+            filters = new ArrayList<ScanFilter>();
+        }
+
         if (mGoogleApiClient.isConnected()) {
             if (!mRequestingLocationUpdates) startLocationUpdates();
         }
@@ -165,6 +448,8 @@ public class MainActivity extends AppCompatActivity
         if (mGoogleMap != null) {
             updateLine();
         }
+
+        scanLeDevice(true);
     }
 
     // runtime permission 처리.
