@@ -64,7 +64,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.security.Permission;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
@@ -267,9 +269,16 @@ public class MainActivity extends AppCompatActivity
                 cycle++;
                 Log.d("SCAN1", "result:" + value);
 
+                Date mDate;
+                SimpleDateFormat mFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+
+                long mNow;
+                mNow = System.currentTimeMillis();
+                mDate = new Date(mNow);
+                System.out.println(mFormat.format(mDate));
 
                 firebaseDatabaseRef.child("/Node/").child("2").child("density").setValue(Integer.parseInt(value)*10);
-                
+                firebaseDatabaseRef.child("/Node/").child("2").child("time").setValue(mFormat.format(mDate));
                 // parsed data를 인터넷 파이어베이스 서버로 전송
             }
         }
@@ -664,6 +673,9 @@ public class MainActivity extends AppCompatActivity
         int color = determineColor(updateDevice.getDensity());
         int id = Integer.parseInt(updateDevice.getID());
 
+        EndDevice update = new EndDevice(updateDevice.getID(), updateDevice.getDensity(),updateDevice.getLatitude(),updateDevice.getLongitude(),updateDevice.getTime());
+        endDeviceList.set(id, update);
+
         LatLng x_dot = registedCoordinates[orderedPair.get(id).getX_dot()];
         LatLng y_dot = registedCoordinates[orderedPair.get(id).getY_dot()];
         PolylineOptions polylineOptions = new PolylineOptions().add(x_dot, y_dot).width(10).color(color);
@@ -833,7 +845,7 @@ public class MainActivity extends AppCompatActivity
 
         if (mMoveMapByAPI) {
             CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLng(currentLatLng);
-            mGoogleMap.moveCamera(cameraUpdate);
+            //mGoogleMap.moveCamera(cameraUpdate);
         }
     }
 }
