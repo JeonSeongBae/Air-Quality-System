@@ -268,7 +268,9 @@ public class MainActivity extends AppCompatActivity
                 }
                 cycle++;
                 Log.d("SCAN1", "result:" + value);
-
+                
+                String id = "2";
+                
                 Date mDate;
                 SimpleDateFormat mFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
@@ -276,9 +278,9 @@ public class MainActivity extends AppCompatActivity
                 mNow = System.currentTimeMillis();
                 mDate = new Date(mNow);
                 System.out.println(mFormat.format(mDate));
-
-                firebaseDatabaseRef.child("/Node/").child("2").child("density").setValue(Integer.parseInt(value)*10);
-                firebaseDatabaseRef.child("/Node/").child("2").child("time").setValue(mFormat.format(mDate));
+                
+                firebaseDatabaseRef.child("/Node/").child(id).child("density").setValue(Integer.parseInt(value)*10);
+                firebaseDatabaseRef.child("/Node/").child(id).child("time").setValue(mFormat.format(mDate));
                 // parsed data를 인터넷 파이어베이스 서버로 전송
             }
         }
