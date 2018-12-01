@@ -168,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     private void updateNode() {
-        firebaseDatabaseRef.child("registedNode").addChildEventListener(new ChildEventListener() {
+        firebaseDatabaseRef.child("Node").addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 RegistedNode registedNode = dataSnapshot.getValue(RegistedNode.class);
